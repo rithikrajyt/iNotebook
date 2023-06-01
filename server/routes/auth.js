@@ -8,7 +8,7 @@ var jwt = require('jsonwebtoken');
 const JWT_SECRET = 'rithikhero'
 
 // Create a User using POST "/api/auth/createuser". Doesn't require Auth
-router.post("/", [
+router.post("/createuser", [
   body('email').isEmail(),
   body('name').isLength({ min: 5 }).withMessage('Name must be at least 5 characters long'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
@@ -41,7 +41,7 @@ router.post("/", [
     }
   }
   const authToken = jwt.sign(data, JWT_SECRET);
-  console.log(authToken);
+ // console.log(authToken);
   res.json({authToken})
 }catch(error){
 console.error(error.message);
@@ -49,4 +49,41 @@ console.error(error.message);
 }
 })
 
+// Authenticate a User using : POST "/api/auth/login" No login Required
+router.post("/login", [
+  body('email').isEmail(),
+ // body('name').isLength({ min: 5 }).withMessage('Name must be at least 5 characters long'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long').exists()
+],async (req, res) => {
+   // If there are errors, return Bad request and the errors
+   const errors = validationResult(req);
+   if (!errors.isEmpty()) {
+     return res.status(400).json({ errors: errors.array() });
+   }
+
+   const {email,password} = req.body;
+   try{
+    let user = await User.findOne({email});
+    if(!user){
+      return res.status(400).json({error : "Please try to login with correct credentials"})
+    }
+
+    const passwordCompare = await bcrypt.compare(password,user.password);
+    if(!passwordCompare){
+      return res.status(400).json({error : "Please try to login with correct credentials"})
+    }
+     const payload = {
+      user: {
+        id: user.id 
+      }
+     }
+     const authToken = jwt.sign(payload, JWT_SECRET);
+     // console.log(authToken);
+      res.json({authToken})
+   }
+   catch(error){
+    console.error(error.message);
+      res.status(500).send("Internal Server Error");
+    }
+})
 module.exports = router;
